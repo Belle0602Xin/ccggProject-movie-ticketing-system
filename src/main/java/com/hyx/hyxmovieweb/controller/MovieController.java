@@ -3,56 +3,26 @@ package com.hyx.hyxmovieweb.controller;
 import com.hyx.hyxmovieweb.entity.*;
 import com.hyx.hyxmovieweb.service.MovieService;
 import com.hyx.hyxmovieweb.entity.User;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
+@CrossOrigin(originPatterns = "*", allowCredentials = "true")// ChatGpt查询 允许跨域携带 Cookie/Session
 public class MovieController {
 
     @Autowired
     private MovieService movieService;
 
     @GetMapping("/movies")
-    public List<Movie> getMovies() {
-        return movieService.getAllMovies();
-    }
-
-    @PostMapping("/book")
-    public Result book(@RequestParam String sid, @RequestParam String uid, @RequestParam int count) {
-
-        if (count <= 0 || count > 100) {
-            return Result.error("购票张数必须在1-100之间");
+    public Result getMovies(HttpSession session) {
+        if (session.getAttribute("currentUser") == null) {
+            return Result.error("请先登录后查看场次");
         }
 
-        Movie movie = movieService.findMovieById(sid);
-
-        if (movie == null) {
-            return Result.error("购票失败：场次不存在");
-        }
-
-        if (count > movie.getTicketsAvailable()) {
-            return Result.error("购票失败：余票不足 (当前仅剩 " + movie.getTicketsAvailable() + " 张票)");
-        }
-
-        movieService.bookTicket(Integer.parseInt(sid), count, uid);
-
-        return Result.ok("购票成功");
-    }
-
-    @GetMapping("/orders")
-    public List<Order> getOrders() {
-        return movieService.getAllOrders();
-    }
-
-    @PostMapping("/login")
-    public String login(@RequestParam String username, @RequestParam String password) {
-        if ("admin".equals(username) && "123456".equals(password)) {
-            return "OK";
-        }
-        return "FAIL";
+        return Result.ok("获取成功", movieService.getAllMovies());
     }
 
     @PostMapping("/register")
@@ -89,9 +59,56 @@ public class MovieController {
             return Result.error("参数不符合要求", errors);
         }
 
+        movieService.addUser(user);
+
         return Result.ok("注册成功");
     }
 
+    @PostMapping("/book")
+    public Result book(@RequestParam String sid, @RequestParam String uid, @RequestParam int count, HttpSession session) {
+        if (session.getAttribute("currentUser") == null) {
+            return Result.error("请登录后再进行购票操作");
+        }
+
+        if (count <= 0 || count > 100) {
+            return Result.error("购票张数必须在1-100之间");
+        }
+
+        Movie movie = movieService.findMovieById(sid);
+
+        if (movie == null) {
+            return Result.error("购票失败：场次不存在");
+        }
+
+        if (count > movie.getTicketsAvailable()) {
+            return Result.error("购票失败：余票不足 (当前仅剩 " + movie.getTicketsAvailable() + " 张票)");
+        }
+
+        String res = movieService.bookTicket(Integer.parseInt(sid), count, (String)session.getAttribute("currentUser"));
+
+        return "SUCCESS".equals(res) ? Result.ok("购票成功") : Result.error("购票失败");
+    }
+
+    @GetMapping("/orders")
+    public Result getOrders(HttpSession session) {
+        if (session.getAttribute("currentUser") == null) {
+            return Result.error("请先登录后访问");
+        }
+
+        return Result.ok("获取成功", movieService.getOrders());
+    }
+
+    @PostMapping("/login")
+    public Result login(@RequestParam String username, @RequestParam String password, HttpSession session) {
+        User user = movieService.findUser(username, password);
+
+        if (user != null) {
+            session.setAttribute("currentUser", username);
+            return Result.ok("登录成功", username);
+        }
+
+        return Result.error("账号或密码错误");
+    }
 
     @PostMapping("/save")
     public Result save() {
@@ -109,5 +126,14 @@ public class MovieController {
         String res = movieService.loadData();
 
         return res.equals("SUCCESS") ? Result.ok("数据加载成功") : Result.error(res);
+    }
+
+    @RestControllerAdvice
+    class GlobalExceptionHandler {
+        @ExceptionHandler(Exception.class)
+        public Result handleException(Exception e) {
+            e.printStackTrace();
+            return Result.error("系统运行异常，请联系管理员");
+        }
     }
 }

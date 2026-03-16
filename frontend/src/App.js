@@ -7,6 +7,8 @@ import SalesStatus from './SalesStatus';
 import Login from './Login';
 import Register from './Register';
 
+axios.defaults.withCredentials = true;
+
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isRegistering, setIsRegistering] = useState(false);
@@ -14,7 +16,15 @@ function App() {
     const [orders, setOrders] = useState([]);
 
     const fetchOrders = () => {
-        axios.get('http://localhost:8080/api/orders').then(res => setOrders(res.data));
+        axios.get('http://localhost:8080/api/orders')
+            .then(res => {
+                if (res.data.code === 200) {
+                    setOrders(res.data.data || []);
+                } else {
+                    console.warn(res.data.message);
+                }
+            })
+            .catch(err => console.error("获取订单失败", err));
     };
 
     const handleSave = () => {
