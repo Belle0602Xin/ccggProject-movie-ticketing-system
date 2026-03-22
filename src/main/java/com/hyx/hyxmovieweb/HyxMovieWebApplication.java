@@ -9,5 +9,4 @@ public class HyxMovieWebApplication {
     public static void main(String[] args) {
         SpringApplication.run(HyxMovieWebApplication.class, args);
     }
-
 }

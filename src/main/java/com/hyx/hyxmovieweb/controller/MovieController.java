@@ -2,96 +2,84 @@ package com.hyx.hyxmovieweb.controller;
 
 import com.hyx.hyxmovieweb.entity.*;
 import com.hyx.hyxmovieweb.service.MovieService;
-import com.hyx.hyxmovieweb.entity.User;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-import java.util.*;
 
+@CrossOrigin(
+        origins = "http://localhost:3000",
+        allowCredentials = "true",
+        allowedHeaders = "*",
+        exposedHeaders = "Set-Cookie"
+)
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(originPatterns = "*", allowCredentials = "true")// ChatGpt查询 允许跨域携带 Cookie/Session
 public class MovieController {
 
     @Autowired
     private MovieService movieService;
 
     @GetMapping("/movies")
-    public Result getMovies(HttpSession session) {
-        if (session.getAttribute("currentUser") == null) {
-            return Result.error("请先登录后查看场次");
-        }
+    public Result getMovies(@RequestParam(defaultValue = "0") int page) {
+        Page<Movie> moviePage = movieService.getMoviesPage(page);
 
-        return Result.ok("获取成功", movieService.getAllMovies());
+        return Result.ok("查询成功", moviePage);
     }
 
     @PostMapping("/register")
     public Result register(@RequestBody User user) {
-        List<String> errors = new ArrayList<>();
-
-        // 1. 账号长度校验 (3~20个字符)
-        if (user.username == null || user.username.length() < 3 || user.username.length() > 20) {
-            errors.add("账号长度在3~20个字符");
-        }
+        // 1. 账号长度校验 (不少于3个字符)
+        if (user.username == null || user.username.length() < 3) return Result.error("账号过短");
 
         // 2. 密码长度校验 (6~20个字符)
         if (user.password == null || user.password.length() < 6 || user.password.length() > 20) {
-            errors.add("用户密码在6~20个字符");
+            return Result.error("用户密码在6~20个字符");
         }
 
         // 3. 性别校验
         if (user.gender == null || user.gender.isEmpty()) {
-            errors.add("性别不能为空");
+            return Result.error("性别不能为空");
         }
 
         // 4. 昵称长度校验（2~20个字符）
         if (user.nickname == null || user.nickname.length() < 2 || user.nickname.length() > 20) {
-            errors.add("昵称length must be between 2 and 20");
+            return Result.error("昵称length must be between 2 and 20");
         }
 
         // 5. 邮箱长度校验 (10~30个字符)
         if (user.email == null || user.email.length() < 10 || user.email.length() > 30) {
-            errors.add("邮箱在10到30个字符");
-        }
-
-        // 如果有任何错误，返回错误列表
-        if (!errors.isEmpty()) {
-            return Result.error("参数不符合要求", errors);
+            return Result.error("邮箱在10到30个字符");
         }
 
         movieService.addUser(user);
-
         return Result.ok("注册成功");
     }
 
     @PostMapping("/book")
-    public Result book(@RequestParam String sid, @RequestParam String uid, @RequestParam int count, HttpSession session) {
+    public Result book(@RequestParam String sid, @RequestParam int count, HttpSession session) {
         if (session.getAttribute("currentUser") == null) {
             return Result.error("请登录后再进行购票操作");
         }
 
-        if (count <= 0 || count > 100) {
-            return Result.error("购票张数必须在1-100之间");
+        int movieSid = Integer.parseInt(sid);
+        String currentUid = (String) session.getAttribute("currentUser");
+
+        try {
+            String res = movieService.bookTicket(movieSid, count, currentUid);
+            return "SUCCESS".equals(res) ? Result.ok("购票成功") : Result.error("购票失败");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
         }
-
-        Movie movie = movieService.findMovieById(sid);
-
-        if (movie == null) {
-            return Result.error("购票失败：场次不存在");
-        }
-
-        if (count > movie.getTicketsAvailable()) {
-            return Result.error("购票失败：余票不足 (当前仅剩 " + movie.getTicketsAvailable() + " 张票)");
-        }
-
-        String res = movieService.bookTicket(Integer.parseInt(sid), count, (String)session.getAttribute("currentUser"));
-
-        return "SUCCESS".equals(res) ? Result.ok("购票成功") : Result.error("购票失败");
     }
 
     @GetMapping("/orders")
     public Result getOrders(HttpSession session) {
-        if (session.getAttribute("currentUser") == null) {
+        String currentUser = (String) session.getAttribute("currentUser");
+
+        if (currentUser == null) {
             return Result.error("请先登录后访问");
         }
 
@@ -100,40 +88,26 @@ public class MovieController {
 
     @PostMapping("/login")
     public Result login(@RequestParam String username, @RequestParam String password, HttpSession session) {
-        User user = movieService.findUser(username, password);
+        User user = movieService.login(username, password);
 
         if (user != null) {
             session.setAttribute("currentUser", username);
-            return Result.ok("登录成功", username);
-        }
 
+            return Result.ok("登录成功", user.nickname);
+        }
         return Result.error("账号或密码错误");
     }
 
     @PostMapping("/save")
     public Result save() {
-        String res = movieService.saveData();
-
-        if ("SUCCESS".equals(res)) {
-            return Result.ok("数据备份成功");
-        } else {
-            return Result.error("备份失败: " + res);
-        }
+        return Result.ok("数据库版本自动实时保存");
     }
 
     @PostMapping("/load")
     public Result load() {
-        String res = movieService.loadData();
-
-        return res.equals("SUCCESS") ? Result.ok("数据加载成功") : Result.error(res);
-    }
-
-    @RestControllerAdvice
-    class GlobalExceptionHandler {
-        @ExceptionHandler(Exception.class)
-        public Result handleException(Exception e) {
-            e.printStackTrace();
-            return Result.error("系统运行异常，请联系管理员");
-        }
+        return Result.ok("数据库数据已是最新");
     }
 }
+
+
+

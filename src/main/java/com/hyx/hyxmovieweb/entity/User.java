@@ -1,26 +1,52 @@
 package com.hyx.hyxmovieweb.entity;
 
-import java.io.Serializable;
+import jakarta.persistence.*;
 
-public class User implements Serializable {
-    private static final long serialVersionUID = 1L;
+import java.util.Date;
 
+@Entity
+@Table(name = "t_customer")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "account", unique = true)
     public String username;
+
+    @Column(name = "password")
     public String password;
+
+    @Column(name = "alias")
     public String nickname;
+
     public String gender;
-    public String email;
     public String phone;
+    public String email;
 
-    public User() {}
-
-    public User(String username, String password, String nickname, String gender, String email, String phone) {
-        this.username = username;
-        this.password = password;
-        this.nickname = nickname;
-        this.gender = gender;
-        this.email = email;
-        this.phone = phone;
+    public String getPassword() {
+        return password;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    @Column(name = "salt")
+    private String salt = "";
+
+    public String getSalt() {
+        return salt;
+    }
+
+    public void setSalt(String salt) {
+        this.salt = salt;
+    }
+
+    @Column(name = "register_time")
+    private Date registerTime = new Date();
 }

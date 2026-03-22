@@ -1,21 +1,41 @@
 package com.hyx.hyxmovieweb.entity;
 
-public class Movie {
-    public int movieId;
-    public String movieName;
-    public String movieTime;
-    public int ticketsAvailable;
-    public double moviePrice;
+import jakarta.persistence.*;
 
-    public Movie(int id, String name, String time, int tickets, double price) {
-        this.movieId = id;
-        this.movieName = name;
-        this.movieTime = time;
-        this.ticketsAvailable = tickets;
-        this.moviePrice = price;
+@Entity
+@Table(name = "t_schedule")
+public class Movie {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Integer id;
+
+    @Column(name = "price")
+    public Double moviePrice;
+
+    @Column(name = "quota")
+    public Integer ticketsAvailable;
+
+    @Column(name = "show_time")
+    public String movieTime;
+
+    private Integer version;
+
+    @Column(name = "f_id")
+    public Integer filmId;
+
+    public String getMovieName() {
+        return "电影编号: " + filmId;
     }
 
-    public int getTicketsAvailable() {
-        return this.ticketsAvailable;
+    public Integer getTicketsAvailable() {
+        return ticketsAvailable;
+    }
+
+    public void setTicketsAvailable(Integer quota) {
+        this.ticketsAvailable = quota;
+    }
+
+    public Double getMoviePrice() {
+        return moviePrice.doubleValue();
     }
 }

@@ -10,7 +10,7 @@ import Register from './Register';
 axios.defaults.withCredentials = true;
 
 function App() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
     const [isRegistering, setIsRegistering] = useState(false);
     const [activeTab, setActiveTab] = useState('场次列表');
     const [orders, setOrders] = useState([]);
@@ -20,28 +20,20 @@ function App() {
             .then(res => {
                 if (res.data.code === 200) {
                     setOrders(res.data.data || []);
-                } else {
-                    console.warn(res.data.message);
                 }
             })
             .catch(err => console.error("获取订单失败", err));
     };
 
-    const handleSave = () => {
-        axios.post('http://localhost:8080/api/save')
-            .then(res => {
-                alert(res.data.message || "备份成功");
-            })
-            .catch(err => alert("备份请求失败"));
-    };
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchOrders();
+        }
+    }, [isLoggedIn]);
 
-    const handleLoad = () => {
-        axios.post('http://localhost:8080/api/load')
-            .then(res => {
-                alert(res.data.message || "加载成功");
-                fetchOrders();
-            })
-            .catch(err => alert("加载请求失败"));
+    const handleLogout = () => {
+        localStorage.removeItem('isLoggedIn');
+        window.location.reload();
     };
 
     if (isRegistering) {
@@ -49,27 +41,54 @@ function App() {
     }
 
     if (!isLoggedIn) {
-        return <Login
-            onLoginSuccess={(name) => { setIsLoggedIn(true); fetchOrders(); }}
-            onGoRegister={() => setIsRegistering(true)}
-        />;
+        return (
+            <Login
+                onLoginSuccess={() => {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    setIsLoggedIn(true);
+                }}
+                onGoRegister={() => setIsRegistering(true)}
+            />
+        );
     }
 
     return (
         <div className="App">
             <nav className="nav-menu">
-                <button className={activeTab === '我的订单' ? 'active' : ''} onClick={() => {fetchOrders(); setActiveTab('我的订单');}}>我的订单</button>
-                <button className={activeTab === '场次列表' ? 'active' : ''} onClick={() => setActiveTab('场次列表')}>场次列表</button>
-                <button className={activeTab === '销售统计' ? 'active' : ''} onClick={() => {fetchOrders(); setActiveTab('销售统计');}}>销售统计</button>
-                <button onClick={handleSave}>备份订单</button>
-                <button onClick={handleLoad}>加载订单</button>
-                <button onClick={() => window.location.reload()}>退出</button>
+                <button className={activeTab === '场次列表' ? 'active' : ''}
+                        onClick={() => setActiveTab('场次列表')}>场次列表
+                </button>
+                <button className={activeTab === '我的订单' ? 'active' : ''} onClick={() => {
+                    fetchOrders();
+                    setActiveTab('我的订单');
+                }}>我的订单
+                </button>
+                <button className={activeTab === '销售统计' ? 'active' : ''} onClick={() => {
+                    fetchOrders();
+                    setActiveTab('销售统计');
+                }}>销售统计
+                </button>
+
+                <button
+                    onClick={() => axios.post('http://localhost:8080/api/save').then(res => alert(res.data.message))}>备份订单
+                </button>
+                <button onClick={() => axios.post('http://localhost:8080/api/load').then(res => {
+                    alert(res.data.message);
+                    fetchOrders();
+                })}>加载订单
+                </button>
+
+                <button onClick={() => {
+                    localStorage.removeItem('isLoggedIn');
+                    window.location.reload();
+                }}>退出
+                </button>
             </nav>
 
-            <div className="content-area">
-                {activeTab === '场次列表' && <MovieTable onBookSuccess={fetchOrders} />}
-                {activeTab === '我的订单' && <OrderList orders={orders} />}
-                {activeTab === '销售统计' && <SalesStatus orders={orders} />}
+            <div className="content-area" style={{marginTop: '20px'}}>
+                {activeTab === '场次列表' && <MovieTable onBookSuccess={fetchOrders}/>}
+                {activeTab === '我的订单' && <OrderList orders={orders}/>}
+                {activeTab === '销售统计' && <SalesStatus orders={orders}/>}
             </div>
         </div>
     );
