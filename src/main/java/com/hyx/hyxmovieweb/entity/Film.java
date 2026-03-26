@@ -21,6 +21,39 @@ public class Film {
     @Column(name = "hero")
     private String hero;
 
+    @Transient
+    private String heroine;
+
+    public String getHeroine() {
+        return heroine;
+    }
+
+    public void setHeroine(String heroine) {
+        this.heroine = heroine;
+    }
+
+    public String getProduction() {
+        return production;
+    }
+
+    public void setProduction(String production) {
+        this.production = production;
+    }
+
+    public String getOutline() {
+        return outline;
+    }
+
+    public void setOutline(String outline) {
+        this.outline = outline;
+    }
+
+    @Transient
+    private String production;
+
+    @Transient
+    private String outline;
+
     public Integer getId() {
         return id;
     }
