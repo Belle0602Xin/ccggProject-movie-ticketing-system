@@ -3,14 +3,18 @@ package com.hyx.hyxmovieweb.service;
 import com.hyx.hyxmovieweb.entity.*;
 import com.hyx.hyxmovieweb.repository.*;
 import jakarta.transaction.Transactional;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class MovieService {
@@ -19,6 +23,12 @@ public class MovieService {
     @Autowired private UserRepository userRepo;
     @Autowired private OrderRepository orderRepo;
     @Autowired private FilmRepository filmRepo;
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private String encodePassword(String password) {
         return DigestUtils.md5DigestAsHex(password.getBytes());
@@ -129,5 +139,33 @@ public class MovieService {
             }
         }
         return orders;
+    }
+
+    public String bookTicket(Integer movieId, Integer userId) {
+        String lockKey = "lock:movie:" + movieId;
+        String stockKey = "ticket:stock:" + movieId;
+
+        RLock lock = redissonClient.getLock(lockKey);
+
+        try {
+            if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
+                Integer stock = (Integer) redisTemplate.opsForValue().get(stockKey);
+
+                if (stock != null && stock > 0) {
+                    redisTemplate.opsForValue().decrement(stockKey);
+
+                    return "Success: User " + userId + " got the ticket.";
+                } else {
+                    return "Fail: Sold out!";
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+        return "Fail: System busy, try again.";
     }
 }
