@@ -78,7 +78,7 @@ public class MovieController {
         int movieSid = Integer.parseInt(sid);
 
         try {
-            String res = movieService.bookTicket(movieSid, 123);
+            String res = movieService.bookTicket(movieSid, count, loginUser);
 
             if (res.contains("Success")) {
                 return ResponseEntity.ok(Result.ok(res));

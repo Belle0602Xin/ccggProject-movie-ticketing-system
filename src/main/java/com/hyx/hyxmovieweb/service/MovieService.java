@@ -67,34 +67,6 @@ public class MovieService {
         return moviePage;
     }
 
-    @Transactional
-    public String bookTicket(int mid, int count, String uid) {
-        Movie movie = movieRepo.findById(mid).orElseThrow(() -> new RuntimeException("场次不存在"));
-
-        if (movie.getTicketsAvailable() < count) {
-            throw new RuntimeException("余票不足");
-        }
-
-        movie.setTicketsAvailable(movie.getTicketsAvailable() - count);
-        movieRepo.save(movie);
-
-        Order order = new Order();
-        order.orderTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        order.sessionId = mid;
-        order.ticketsCount = count;
-        order.totalAmount = count * movie.getMoviePrice();
-
-        User user = userRepo.findByUsername(uid);
-
-        if (user != null) {
-            order.customerId = user.getId();
-        }
-
-        orderRepo.save(order);
-
-        return "SUCCESS";
-    }
-
     public Movie findMovieById(int mid) {
         return movieRepo.findById(mid).orElse(null);
     }
@@ -141,9 +113,10 @@ public class MovieService {
         return orders;
     }
 
-    public String bookTicket(Integer movieId, Integer userId) {
-        String lockKey = "lock:movie:" + movieId;
-        String stockKey = "ticket:stock:" + movieId;
+    @Transactional
+    public String bookTicket(int mid, int count, String uid) {
+        String lockKey = "lock:movie:" + mid;
+        String stockKey = "ticket:stock:" + mid;
 
         RLock lock = redissonClient.getLock(lockKey);
 
@@ -151,16 +124,34 @@ public class MovieService {
             if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
                 Integer stock = (Integer) redisTemplate.opsForValue().get(stockKey);
 
-                if (stock != null && stock > 0) {
-                    redisTemplate.opsForValue().decrement(stockKey);
+                if (stock != null && stock >= count) {
+                    redisTemplate.opsForValue().decrement(stockKey, count);
 
-                    return "Success: User " + userId + " got the ticket.";
+                    Movie movie = movieRepo.findById(mid).orElseThrow(() -> new RuntimeException("场次不存在"));
+                    movie.setTicketsAvailable(movie.getTicketsAvailable() - count);
+                    movieRepo.save(movie);
+
+                    Order order = new Order();
+                    order.orderTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+                    order.sessionId = mid;
+                    order.ticketsCount = count;
+                    order.totalAmount = count * movie.getMoviePrice();
+
+                    User user = userRepo.findByUsername(uid);
+                    if (user != null) {
+                        order.customerId = user.getId();
+                    }
+                    orderRepo.save(order);
+
+                    return "Success: User " + uid + " got the ticket.";
                 } else {
                     return "Fail: Sold out!";
                 }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+
+            return "Fail: System Error";
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
