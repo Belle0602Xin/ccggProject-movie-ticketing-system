@@ -27,7 +27,7 @@ public class RequestMappingPrinter {
                         .collect(Collectors.groupingBy(e -> e.getValue().getBeanType().getSimpleName()));
 
         groupedMethods.forEach((className, methods) -> {
-            System.out.println("\n📍 Controller类: [" + className + "]");
+            System.out.println("\n Controller类: [" + className + "]");
 
             for (Map.Entry<RequestMappingInfo, HandlerMethod> methodEntry : methods) {
                 System.out.println("URL: " + methodEntry.getKey() + " -> 方法: " + methodEntry.getValue().getMethod().getName());

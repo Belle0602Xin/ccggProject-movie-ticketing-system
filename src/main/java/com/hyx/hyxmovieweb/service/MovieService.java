@@ -5,6 +5,7 @@ import com.hyx.hyxmovieweb.repository.*;
 import jakarta.transaction.Transactional;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,18 +24,18 @@ public class MovieService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final FilmRepository filmRepository;
-
     private final RedissonClient redissonClient;
-
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
-    public MovieService(MovieRepository movieRepository, UserRepository userRepository, OrderRepository orderRepository, FilmRepository filmRepository, RedissonClient redissonClient, RedisTemplate<String, Object> redisTemplate) {
+    public MovieService(MovieRepository movieRepository, UserRepository userRepository, OrderRepository orderRepository, FilmRepository filmRepository, RedissonClient redissonClient, RedisTemplate<String, Object> redisTemplate, RabbitTemplate rabbitTemplate) {
         this.movieRepository = movieRepository;
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.filmRepository = filmRepository;
         this.redissonClient = redissonClient;
         this.redisTemplate = redisTemplate;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     private String encodePassword(String password) {
@@ -146,6 +147,18 @@ public class MovieService {
                         order.customerId = user.getId();
                     }
                     orderRepository.save(order);
+
+                    rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
+                        if (ack) {
+                            System.out.println("消息已成功到达 Exchange");
+                        } else {
+                            System.err.println("消息发送失败: " + cause);
+                        }
+                    });
+
+                    rabbitTemplate.convertAndSend("exchange.order", "newOrder", order);
+
+                    System.out.println("订单消息已推送到 RabbitMQ 队列" + order.id);
 
                     return "Success: User " + uid + " got the ticket.";
                 } else {

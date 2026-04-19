@@ -23,6 +23,9 @@ public class Movie {
     @Column(name = "f_id")
     private Integer filmId;
 
+    @Column(name = "theater_id")
+    private Integer theaterId;
+
     @Version
     private Integer version;
 

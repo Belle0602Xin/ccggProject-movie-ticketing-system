@@ -20,12 +20,14 @@ public class MongoDBService {
     private final OrderRepository orderRepository;
     private final MovieRepository movieRepository;
     private final FilmRepository filmRepository;
+    private final TheaterRepository theaterRepository;
     private final MongoTemplate mongoTemplate;
 
-    public MongoDBService(OrderRepository orderRepository, MovieRepository movieRepository, FilmRepository filmRepository, MongoTemplate mongoTemplate) {
+    public MongoDBService(OrderRepository orderRepository, MovieRepository movieRepository, FilmRepository filmRepository, TheaterRepository theaterRepository, MongoTemplate mongoTemplate) {
         this.orderRepository = orderRepository;
         this.movieRepository = movieRepository;
         this.filmRepository = filmRepository;
+        this.theaterRepository = theaterRepository;
         this.mongoTemplate = mongoTemplate;
     }
 
@@ -110,5 +112,26 @@ public class MongoDBService {
         return results.getMappedResults().stream()
                 .map(doc -> (Map<String, Object>) new HashMap<>(doc))
                 .toList();
+    }
+
+    public void saveSingleOrder(Order order) {
+        MongoDBOrder mongoOrder = convertToMongoOrder(order);
+
+        movieRepository.findById(order.getScheduleId()).ifPresent(movie -> {
+            theaterRepository.findById(movie.getTheaterId()).ifPresent(theater -> {
+                mongoOrder.setAddress(theater.getAddress());
+            });
+        });
+
+        if (mongoOrder.getAddress() == null) {
+            mongoOrder.setAddress("默认影院地址");
+        }
+
+        mongoOrder.setTicketNo("T" + System.currentTimeMillis());
+
+        mongoTemplate.save(mongoOrder, "orders");
+        mongoTemplate.save(mongoOrder, "myOrders");
+
+        System.out.println("异步入库成功：订单 ID " + order.id + " 已同步至 MongoDB 双集合");
     }
 }

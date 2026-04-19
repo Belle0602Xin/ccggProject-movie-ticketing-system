@@ -26,7 +26,7 @@ public class RequestMappingInspector implements CommandLineRunner {
             String className = method.getBeanType().getSimpleName();
             String methodName = method.getMethod().getName();
             String patterns = info.getDirectPaths().toString();
-            System.out.printf("📍 Controller: [%s] -> URL: %s -> Method: %s\n",
+            System.out.printf("Controller: [%s] -> URL: %s -> Method: %s\n",
                     className, patterns, methodName);
         });
 
