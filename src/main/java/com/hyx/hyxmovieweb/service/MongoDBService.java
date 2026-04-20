@@ -31,14 +31,15 @@ public class MongoDBService {
         this.mongoTemplate = mongoTemplate;
     }
 
-    private MongoDBOrder convertToMongoOrder(Order mo) {
+    private MongoDBOrder convertToMongoOrder(Order order) {
         MongoDBOrder mongoDBOrder = new MongoDBOrder();
-        mongoDBOrder.setOrderTime(mo.orderTime);
-        mongoDBOrder.setPrice(mo.totalPrice);
-        mongoDBOrder.setQuantity(mo.ticketsQuality);
-        mongoDBOrder.setCustomerId(mo.customerId);
+        mongoDBOrder.setOrderTime(order.orderTime);
+        mongoDBOrder.setPrice(order.totalPrice);
+        mongoDBOrder.setQuantity(order.ticketsQuality);
+        mongoDBOrder.setCustomerId(order.customerId);
+        mongoDBOrder.setId(order.getId());
 
-        movieRepository.findById(mo.scheduleId)
+        movieRepository.findById(order.scheduleId)
                 .flatMap(movie -> filmRepository.findById(movie.getFilmId()))
                 .ifPresent(film -> {
                     mongoDBOrder.setFilmName(film.getName());
@@ -57,27 +58,27 @@ public class MongoDBService {
         Map<Integer, Film> filmMap = filmRepository.findAll().stream()
                 .collect(Collectors.toMap(Film::getId, f -> f));
 
-        List<MongoDBOrder> mongoOrders = allOrders.stream().map(mo -> {
+        List<MongoDBOrder> mongoDBOrders = allOrders.stream().map(order -> {
             MongoDBOrder mongoDBOrder = new MongoDBOrder();
             mongoDBOrder.setTicketNo(String.valueOf(System.currentTimeMillis()));
-            mongoDBOrder.setOrderTime(mo.getOrderTime());
-            mongoDBOrder.setQuantity(mo.getTicketsQuality());
-            mongoDBOrder.setPrice(mo.getTotalPrice());
-            mongoDBOrder.setAddress("Secaucus Cinema No." + mo.getScheduleId());
+            mongoDBOrder.setOrderTime(order.getOrderTime());
+            mongoDBOrder.setQuantity(order.getTicketsQuality());
+            mongoDBOrder.setPrice(order.getTotalPrice());
+            mongoDBOrder.setAddress("Cinema" + order.getScheduleId());
 
-            Movie movie = movieMap.get(mo.getScheduleId());
+            Movie movie = movieMap.get(order.getScheduleId());
             if (movie != null) {
-                Film f = filmMap.get(movie.getFilmId());
-                if (f != null) {
-                    mongoDBOrder.setFilmName(f.getName());
-                    mongoDBOrder.setClassify(f.getClassify());
+                Film film = filmMap.get(movie.getFilmId());
+                if (film != null) {
+                    mongoDBOrder.setFilmName(film.getName());
+                    mongoDBOrder.setClassify(film.getClassify());
                 }
             }
             return mongoDBOrder;
         }).toList();
 
         mongoTemplate.dropCollection("orders");
-        mongoTemplate.insertAll(mongoOrders);
+        mongoTemplate.insertAll(mongoDBOrders);
     }
 
     public void transferToMyOrders() {
@@ -115,22 +116,22 @@ public class MongoDBService {
     }
 
     public void saveSingleOrder(Order order) {
-        MongoDBOrder mongoOrder = convertToMongoOrder(order);
+        MongoDBOrder mongoDBOrder = convertToMongoOrder(order);
 
         movieRepository.findById(order.getScheduleId()).ifPresent(movie -> {
             theaterRepository.findById(movie.getTheaterId()).ifPresent(theater -> {
-                mongoOrder.setAddress(theater.getAddress());
+                mongoDBOrder.setAddress(theater.getAddress());
             });
         });
 
-        if (mongoOrder.getAddress() == null) {
-            mongoOrder.setAddress("默认影院地址");
+        if (mongoDBOrder.getAddress() == null) {
+            mongoDBOrder.setAddress("默认影院地址");
         }
 
-        mongoOrder.setTicketNo("T" + System.currentTimeMillis());
+        mongoDBOrder.setTicketNo("T" + System.currentTimeMillis());
 
-        mongoTemplate.save(mongoOrder, "orders");
-        mongoTemplate.save(mongoOrder, "myOrders");
+        mongoTemplate.save(mongoDBOrder, "orders");
+        mongoTemplate.save(mongoDBOrder, "myOrders");
 
         System.out.println("异步入库成功：订单 ID " + order.id + " 已同步至 MongoDB 双集合");
     }

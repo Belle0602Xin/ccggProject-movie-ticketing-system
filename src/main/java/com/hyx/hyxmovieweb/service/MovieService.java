@@ -12,9 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -125,9 +123,10 @@ public class MovieService {
 
         try {
             if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
-                Integer stock = (Integer) redisTemplate.opsForValue().get(stockKey);
+                Object stockObj = redisTemplate.opsForHash().get("movie:stocks", String.valueOf(mid));
+                int stock = (stockObj != null) ? Integer.parseInt(stockObj.toString()) : 0;
 
-                if (stock != null && stock >= count) {
+                if (stock >= count) {
                     redisTemplate.opsForValue().decrement(stockKey, count);
 
                     Movie movie = movieRepository.findById(mid).orElseThrow(() -> new RuntimeException("场次不存在"));
@@ -179,6 +178,18 @@ public class MovieService {
 
     private static double getMoviePrice(Movie movie) {
         return movie.getMoviePrice();
+    }
+
+    public void warmUpRedisInventory() {
+        List<Movie> movies = movieRepository.findAll();
+
+        Map<String, String> inventoryMap = new HashMap<>();
+        for (Movie movie : movies) {
+            inventoryMap.put(movie.getId().toString(), movie.getTicketsQuota().toString());
+        }
+
+        redisTemplate.opsForHash().putAll("movie:stocks", inventoryMap);
+        System.out.println("Redis Warm-up: All movie stocks loaded into Hash structure.");
     }
 }
 

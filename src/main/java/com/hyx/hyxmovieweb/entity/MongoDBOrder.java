@@ -8,13 +8,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "orders")
 public class MongoDBOrder {
     @Id
-    private String id;
+    private Long id;
     private Integer quantity;
     private String address;
     private String orderTime;
     private String ticketNo;
     private Double price;
-    private String showTime;
     private String filmName;
     private String classify;
     private Integer customerId;
