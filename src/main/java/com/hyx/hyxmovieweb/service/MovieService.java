@@ -166,7 +166,7 @@ public class MovieService {
 
                     System.out.println("Order message pushed to RabbitMQ queue, Order ID: " + order.id);
 
-                    return "Success: User: " + uid + "(CustomerID: " + currentUserId + ") successfully got the ticket.";
+                    return "Success: User " + uid + " (CustomerID: " + currentUserId + ") successfully got the ticket. Order ID: " + order.getId();
                 } else {
                     return "Fail: Sold out!";
                 }

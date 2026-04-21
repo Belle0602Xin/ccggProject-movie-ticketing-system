@@ -133,6 +133,6 @@ public class MongoDBService {
         mongoTemplate.save(mongoDBOrder, "orders");
         mongoTemplate.save(mongoDBOrder, "myOrders");
 
-        System.out.println("Async storage successful: Order ID \" + order.id + \" synchronized to MongoDB dual collections.");
+        System.out.println("Async storage successful: Order ID " + order.id + " synchronized to MongoDB dual collections.");
     }
 }
