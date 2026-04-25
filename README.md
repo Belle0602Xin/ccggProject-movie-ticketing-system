@@ -47,5 +47,7 @@ Run:
 
 Bash
 ./mvnw spring-boot:run
+
 👩‍💻 About the Developer
+
 Developed by Iris (Yuxin) Hou, a Full Stack Developer specialized in Java ecosystems. This project serves as a showcase of my ability to build secure, scalable, and user-centric backend systems.
