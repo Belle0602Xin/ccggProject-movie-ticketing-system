@@ -1,4 +1,5 @@
 🎬 Movie Ticketing & Management System
+
 🚀 Project Overview
 This is a high-performance, full-stack web application designed to handle end-to-end movie ticketing operations. Beyond simple CRUD, the system is architected to tackle typical enterprise challenges such as concurrency control, data consistency, and scalable cloud deployment.
 
